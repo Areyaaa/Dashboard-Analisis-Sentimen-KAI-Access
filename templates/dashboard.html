@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Dashboard Analisis Sentimen</title>
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css">
+  <link rel="stylesheet" href="static/style.css">
+</head>
+<body>
+
+  <h1>Dashboard Analisis Sentimen</h1>
+
+  <h2>📊 Data Ulasan</h2>
+  <table id="reviewsTable" class="display" style="width:100%">
+    <thead>
+      <tr>
+        <th>Ulasan</th>
+        <th>Rating</th>
+        <th>Sentiment</th>
+      </tr>
+    </thead>
+  </table>
+
+  <h2>📝 Contoh Ulasan</h2>
+  <div class="examples-row">
+    <div class="examples-column">
+      <h3>Positive</h3>
+      <ul id="exPos"></ul>
+    </div>
+    <div class="examples-column">
+      <h3>Negative</h3>
+      <ul id="exNeg"></ul>
+    </div>
+    <div class="examples-column">
+      <h3>Neutral</h3>
+      <ul id="exNeu"></ul>
+    </div>
+  </div>
+
+  <h2>📈 Analisis Kata (Horizontal Chart)</h2>
+  <div class="charts-row">
+    <div class="chart-box">
+      <h3>Positive</h3>
+      <canvas id="chartPositive"></canvas>
+    </div>
+    <div class="chart-box">
+      <h3>Negative</h3>
+      <canvas id="chartNegative"></canvas>
+    </div>
+    <div class="chart-box">
+      <h3>Neutral</h3>
+      <canvas id="chartNeutral"></canvas>
+    </div>
+  </div>
+
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+
+      // Load tabel ulasan
+      $('#reviewsTable').DataTable({
+        ajax: {
+          url: '/api/reviews',
+          dataSrc: json => json.data || []
+        },
+        columns: [
+          { data: 'ulasan' },
+          { data: 'rating' },
+          { data: 'sentiment' }
+        ],
+        pageLength: 5
+      });
+
+      // Load contoh ulasan
+      fetch('/api/sample_examples')
+        .then(r => r.json())
+        .then(ex => {
+          fillList('exPos', ex.positive || []);
+          fillList('exNeg', ex.negative || []);
+          fillList('exNeu', ex.neutral || []);
+        });
+
+      function fillList(id, arr) {
+        document.getElementById(id).innerHTML = arr.map(x => `<li>${x}</li>`).join('');
+      }
+
+      // Render Chart.js Horizontal
+      function renderChart(elementId, list){
+        const ctx = document.getElementById(elementId).getContext('2d');
+        const labels = list.slice(0, 10).map(w => w.word || w[0]);
+        const counts = list.slice(0, 10).map(w => w.count || w[1]);
+        new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: labels,
+            datasets: [{
+              label: 'Jumlah Kata',
+              data: counts,
+              backgroundColor: 'rgba(54, 162, 235, 0.6)'
+            }]
+          },
+          options: {
+            indexAxis: 'y',
+            responsive: true,
+            animation: { duration: 400 },
+            plugins: {
+              legend: { display: false }
+            },
+            scales: {
+              x: { beginAtZero: true }
+            }
+          }
+        });
+      }
+
+      // Ambil data untuk masing-masing sentiment
+      fetch(`/api/top_words?sentiment=positive`).then(r => r.json()).then(d => renderChart('chartPositive', d));
+      fetch(`/api/top_words?sentiment=negative`).then(r => r.json()).then(d => renderChart('chartNegative', d));
+      fetch(`/api/top_words?sentiment=neutral`).then(r => r.json()).then(d => renderChart('chartNeutral', d));
+
+    });
+  </script>
+</body>
+</html>

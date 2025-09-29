@@ -1,0 +1,5 @@
+Flask==2.3.2
+pandas==2.2.2
+numpy==1.26.0
+textblob==0.17.1
+nltk==3.8.1
